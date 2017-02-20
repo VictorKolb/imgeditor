@@ -11,13 +11,14 @@
 <style>
     body {
         background: #e8e8e8;
+        font-family: sans-serif;
     }
 
     .pick-container {
         background: rgb(255, 255, 255);
         padding: 10px;
         display: block;
-        margin: 10px 0px;
+        margin: 10px 0;
         text-align: center;
     }
 
@@ -46,6 +47,11 @@
         display: flex;
     }
 
+    input[type='range'] {
+        width: 155px;
+        margin-bottom: 20px;
+    }
+
     label {
         display: inline-block;
         width: 160px;
@@ -57,6 +63,7 @@
         vertical-align: middle;
         width: 50px;
         height: 50px;
+        border-radius: 50px;
         cursor: pointer;
     }
 </style>
@@ -74,6 +81,9 @@
             reset
         </button>
         <div class="js-pick pick-container ">rgba(255, 255, 255, 1) <br> hsl(0, 0, 100)</div>
+        <input class="js-threshold-range" type="range" min="1" max="170" step="1" value="10">
+        <input type="color" class="js-color-picker" value="#ec353a">
+
         <section class="js-color-overlay">
             <label for="color1">
                 <span style=" background: #759be5"></span>
@@ -147,14 +157,26 @@
                 #fb8b24
             </label>
         </section>
-        <button class="js-overlay">
-            overlay
+        <select name="" id="" class="js-colorize-type">
+            <option value="overlay">overlay</option>
+            <option value="color">color</option>
+        </select>
+        <button class="js-colorize">
+            colorize
         </button>
+        <br>
+        <label for="">
+            <input class="js-threshold-range" type="range" min="1" max="170" step="1" value="10">
+            
+        </label>
+
     </section>
 </article>
 
 <script>
     let source_image;
+    let buffered_image;
+    let picked_color;
 
     function setCanvasToDefault() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -183,11 +205,9 @@
         }
     }
 
-    function placeOriginalImage() {
-        setCanvasToDefault();
-
+    function placeImage(image) {
         let img = new Image();
-        img.src = source_image;
+        img.src = image;
 
         stretchCanvas(img);
         ctx.drawImage(img, 0, 0, img.width, img.height);
@@ -217,12 +237,12 @@
                     //подгоняем размер миниатюры и холста
                     stretchCanvas(img);
                     ctx.drawImage(img, 0, 0, img.width, img.height);
+                    buffered_image = canvas.toDataURL();
                 };
             })(f);
             reader.readAsDataURL(f);
         }
     }
-
 
     function pick(event) {
         const x = event.layerX;
@@ -284,6 +304,30 @@
         return [h * 3.6 * 100, s, l];
     }
 
+    function componentToHex(c) {
+        var hex = c.toString(16);
+        return hex.length == 1 ? "0" + hex : hex;
+    }
+
+    function rgbToHex(r, g, b) {
+        return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+    }
+
+    function hexToRgbA(hex) {
+        var c;
+        if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex))
+        {
+            c = hex.substring(1).split('');
+            if (c.length == 3)
+            {
+                c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+            }
+            c = '0x' + c.join('');
+            return [(c >> 16) & 255, (c >> 8) & 255, c & 255];
+        }
+        throw new Error('Bad Hex');
+    }
+
     function makeGray(data, i) {
         const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
         data[i] = avg; // red
@@ -291,16 +335,27 @@
         data[i + 2] = avg; // blue
     }
 
-    function magic(e) {
+    function thresholdChange() {
+        placeImage(buffered_image);
+        BWExceptOne();
+    }
+
+    function pickColorFromImage(e) {
         const picked_data = Array.from(pick(e));
+        color_input.value = rgbToHex(picked_data[0], picked_data[1], picked_data[2])
+    }
+
+    function BWExceptOne() {
+        const picked_data = hexToRgbA(color_input.value);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
-        const range_fault = 20; //Разброс диапазона значений
-        const picked_color = Math.floor(rgbToHsl(picked_data[0], picked_data[1], picked_data[2])[0]); //Hue выбранно цвета
+        const range_fault = +threshold_range.value; //Разброс диапазона значений
         const picked_range = []; //Диапазон подходящих значений
 
+        picked_color = Math.floor(rgbToHsl(picked_data[0], picked_data[1], picked_data[2])[0]); //Hue выбранно цвета
         picked_range[0] = picked_color - range_fault > 0 ? picked_color - range_fault : 360 + picked_color - range_fault;
         picked_range[1] = picked_color + range_fault < 360 ? picked_color + range_fault : picked_color + range_fault - 360;
+
 
         for (let i = 0; i < data.length; i += 4)
         {
@@ -336,26 +391,34 @@
         ctx.putImageData(imageData, 0, 0);
     }
 
-    function overlay() {
+    function colorize() {
         const color = document.querySelector('.js-color-overlay').querySelector('input:checked').dataset.color;
+        const colorize_type = document.querySelector('.js-colorize-type').value;
 
         makeGrayscale();
-        ctx.globalCompositeOperation = 'overlay';
+        ctx.globalCompositeOperation = colorize_type;
         ctx.fillStyle = color;
         ctx.fillRect(0, 0, canvas.width, canvas.height)
     }
 
-    const overlay_btn = document.querySelector('.js-overlay');
+    const colorize_btn = document.querySelector('.js-colorize');
     const reset_btn = document.querySelector('.js-reset');
     const canvas = document.querySelector('.js-canvas');
     const ctx = canvas.getContext('2d');
     const pick_container = document.querySelector('.js-pick');
+    const threshold_range = document.querySelector('.js-threshold-range');
+    const color_input = document.querySelector('.js-color-picker');
 
+
+    threshold_range.addEventListener('change', thresholdChange);
     document.getElementById('files').addEventListener('change', handleFileSelect, false);
     canvas.addEventListener('mousemove', printPick);
-    canvas.addEventListener('click', magic);
-    overlay_btn.addEventListener('click', overlay);
-    reset_btn.addEventListener('click', placeOriginalImage);
+    canvas.addEventListener('click', e => {
+        pickColorFromImage(e);
+        BWExceptOne();
+    });
+    colorize_btn.addEventListener('click', colorize);
+    reset_btn.addEventListener('click', () => placeImage(buffered_image));
 </script>
 </body>
 </html>
