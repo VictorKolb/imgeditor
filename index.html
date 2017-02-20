@@ -9,6 +9,27 @@
 </head>
 <body>
 <style>
+    body {
+        background: #e8e8e8;
+    }
+
+    .pick-container {
+        background: rgb(255, 255, 255);
+        padding: 10px;
+        display: block;
+        margin: 10px 0px;
+        text-align: center;
+    }
+
+    .canvas-container {
+        background: gainsboro;
+        width: 500px;
+        padding: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
     .thumb {
         display: block;
         height: 500px;
@@ -18,14 +39,17 @@
     canvas {
         display: block;
         cursor: pointer;
-    }
-
-    .canvas-container {
-        width: 500px;
+        margin: 0 auto;
     }
 
     .container {
         display: flex;
+    }
+
+    label {
+        display: inline-block;
+        width: 160px;
+        margin-bottom: 10PX;
     }
 
     label span {
@@ -33,6 +57,7 @@
         vertical-align: middle;
         width: 50px;
         height: 50px;
+        cursor: pointer;
     }
 </style>
 
@@ -43,25 +68,88 @@
         </div>
     </section>
 
-    <section>
+    <section style="padding-left: 10px; width: 500px">
         <input type="file" id="files" name="files[]"/>
-        <button class="js-overlay">
-            overlay
-        </button>
         <button class="js-reset">
             reset
         </button>
-        <div class="js-pick">rgba(255, 255, 255, 1) hsl(0, 0, 100)</div>
-        <label for="color1">
-            <span style=" background: #759be5"></span>
-            <input type="radio" id="color1" name="colors">
-            #759be5
-        </label>
-        <label for="color2">
-            <span style=" background: #759be5"></span>
-            <input type="radio" id="color2" name="colors">
-            #759be5
-        </label>
+        <div class="js-pick pick-container ">rgba(255, 255, 255, 1) <br> hsl(0, 0, 100)</div>
+        <section class="js-color-overlay">
+            <label for="color1">
+                <span style=" background: #759be5"></span>
+                <input type="radio" checked id="color1" data-color="#759be5" name="colors">
+                #759be5
+            </label>
+
+            <label for="color2">
+                <span style="background: #3942cd"></span>
+                <input type="radio" id="color2" data-color="#3942cd" name="colors">
+                #3942cd
+            </label>
+
+            <label for="color3">
+                <span style="background: #0a1293"></span>
+                <input type="radio" id="color3" data-color="#0a1293" name="colors">
+                #0a1293
+            </label>
+
+            <label for="color4">
+                <span style="background: #9a93dc"></span>
+                <input type="radio" id="color4" data-color="#9a93dc" name="colors">
+                #9a93dc
+            </label>
+
+            <label for="color5">
+                <span style="background: #6f65d4"></span>
+                <input type="radio" id="color5" data-color="#6f65d4" name="colors">
+                #6f65d4
+            </label>
+
+            <label for="color6">
+                <span style="background: #343376"></span>
+                <input type="radio" id="color6" data-color="#343376" name="colors">
+                #343376
+            </label>
+
+            <label for="color7">
+                <span style="background: #fc7253"></span>
+                <input type="radio" id="color7" data-color="#fc7253" name="colors">
+                #fc7253
+            </label>
+
+            <label for="color8">
+                <span style="background: #fa2b10"></span>
+                <input type="radio" id="color8" data-color="#fa2b10" name="colors">
+                #fa2b10
+            </label>
+
+            <label for="color9">
+                <span style="background: #bd1718"></span>
+                <input type="radio" id="color9" data-color="#bd1718" name="colors">
+                #bd1718
+            </label>
+
+            <label for="color10">
+                <span style="background: #f9e200"></span>
+                <input type="radio" id="color10" data-color="#f9e200" name="colors">
+                #f9e200
+            </label>
+
+            <label for="color11">
+                <span style="background: #ffc600"></span>
+                <input type="radio" id="color11" data-color="#ffc600" name="colors">
+                #ffc600
+            </label>
+
+            <label for="color12">
+                <span style="background: #fb8b24"></span>
+                <input type="radio" id="color12" data-color="#fb8b24" name="colors">
+                #fb8b24
+            </label>
+        </section>
+        <button class="js-overlay">
+            overlay
+        </button>
     </section>
 </article>
 
@@ -95,7 +183,7 @@
         }
     }
 
-    function placeOriginalImage(e) {
+    function placeOriginalImage() {
         setCanvasToDefault();
 
         let img = new Image();
@@ -148,12 +236,21 @@
         const data = pick(e);
         let hsl = rgbToHsl(data[0], data[1], data[2]);
 
+        if (Math.floor(hsl[2] * 100) < 50)
+        {
+            pick_container.style.color = '#fff'
+        }
+        else
+        {
+            pick_container.style.color = '#000'
+        }
+
         hsl = `hsl(${Math.floor(hsl[0])}, ${Math.floor(hsl[1] * 100)}, ${Math.floor(hsl[2] * 100)})`;
         const rgba = 'rgba(' + data[0] + ', ' + data[1] +
             ', ' + data[2] + ', ' + (data[3] / 255) + ')';
 
         pick_container.style.background = rgba;
-        pick_container.textContent = `${rgba} ${hsl}`;
+        pick_container.innerHTML = `${rgba} <br> ${hsl}`;
     }
 
     function rgbToHsl(r, g, b) {
@@ -193,14 +290,6 @@
         data[i + 1] = avg; // green
         data[i + 2] = avg; // blue
     }
-
-    //    function copyCanvasArea(e) {
-    //        canvas1.width =  canvas.width;
-    //        canvas1.height = canvas.height;
-    //        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    //        ctx1.putImageData(imageData, 0, 0);
-    //        magic(e);
-    //    }
 
     function magic(e) {
         const picked_data = Array.from(pick(e));
@@ -248,9 +337,11 @@
     }
 
     function overlay() {
+        const color = document.querySelector('.js-color-overlay').querySelector('input:checked').dataset.color;
+
         makeGrayscale();
         ctx.globalCompositeOperation = 'overlay';
-        ctx.fillStyle = '#343376';
+        ctx.fillStyle = color;
         ctx.fillRect(0, 0, canvas.width, canvas.height)
     }
 
