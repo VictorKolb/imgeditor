@@ -17,9 +17,12 @@
     .pick-container {
         background: rgb(255, 255, 255);
         padding: 10px;
-        display: block;
-        margin: 10px 0;
+        display: inline-block;
+        font-size: 12px;
         text-align: center;
+        width: 193px;
+        vertical-align: middle;
+        margin: 10px 0 10px 10px;
     }
 
     .canvas-container {
@@ -29,12 +32,6 @@
         display: flex;
         justify-content: center;
         align-items: center;
-    }
-
-    .thumb {
-        display: block;
-        height: 500px;
-        margin: 10px 5px 0 0;
     }
 
     canvas {
@@ -91,7 +88,7 @@
 <article class="container">
     <section>
         <div class="canvas-container">
-            <canvas class="js-canvas" width="500" height="500"></canvas>
+            <canvas class="js-canvas" width="500" height="550"></canvas>
         </div>
     </section>
 
@@ -101,11 +98,19 @@
         <button class="js-reset">
             reset
         </button>
-        <hr>
 
-        <div class="js-pick pick-container ">rgba(255, 255, 255, 1) <br> hsl(0, 0, 100)</div>
+        <hr>
         <input class="js-threshold-range" type="range" min="1" max="170" step="1" value="10">
         <input type="color" class="js-color-picker" value="#ec353a">
+        <div class="js-pick pick-container ">rgba(255, 255, 255, 1) <br> hsl(0, 0, 100)</div>
+
+        <hr>
+        <label for="">
+            <span>Contrast:</span>
+            <input class="js-contrast-range" type="range" min="-100" max="100" step="1" value="0">
+        </label>
+        <button class="js-grayscale-btn">black and white</button>
+
         <hr>
         <section class="js-color-overlay colors-container">
             <label for="color1">
@@ -180,7 +185,7 @@
                 #fb8b24
             </label>
         </section>
-        <select name="" id="" class="js-colorize-type">
+        <select name="" id="" class="js-colorize-type" style="margin-top: 15px;">
             <option value="overlay">overlay</option>
             <option value="color">color</option>
         </select>
@@ -188,12 +193,7 @@
             colorize
         </button>
         <hr>
-
-
-        <label for="">
-            <span>Contrast:</span>
-            <input class="js-contrast-range" type="range" min="-100" max="100" step="1" value="0">
-        </label>
+        <button class="js-save-btn">sane to png</button>
     </section>
 </article>
 
@@ -210,7 +210,6 @@
 
     function stretchCanvas(img) {
         //подгоняем размер миниатюры и холста
-
         if (img.width > canvas.width)
         {
             img.height = img.height / (img.width / canvas.width);
@@ -232,8 +231,8 @@
 
     function placeImage(image) {
         let img = new Image();
-        img.src = image;
 
+        img.src = image;
         stretchCanvas(img);
         ctx.drawImage(img, 0, 0, img.width, img.height);
     }
@@ -241,6 +240,7 @@
     function handleFileSelect(evt) {
         const files = evt.target.files; // FileList object
 
+        removeState('all');
         for (let i = 0, f; f = files[i]; i++)
         {
             if (!f.type.match('image.*'))
@@ -360,10 +360,6 @@
         data[i + 2] = avg; // blue
     }
 
-    function thresholdChange() {
-        addFilters();
-    }
-
     function pickColorFromImage(e) {
         const picked_data = Array.from(pick(e));
         color_input.value = rgbToHex(picked_data[0], picked_data[1], picked_data[2]);
@@ -379,7 +375,6 @@
         picked_color = Math.floor(rgbToHsl(picked_data[0], picked_data[1], picked_data[2])[0]); //Hue выбранно цвета
         picked_range[0] = picked_color - range_fault > 0 ? picked_color - range_fault : 360 + picked_color - range_fault;
         picked_range[1] = picked_color + range_fault < 360 ? picked_color + range_fault : picked_color + range_fault - 360;
-
 
         for (let i = 0; i < data.length; i += 4)
         {
@@ -441,12 +436,14 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height)
     }
 
-
     function setState(filter) {
         if (!(state.includes(filter)))
         {
             state.push(filter)
         }
+
+        placeImage(buffered_image);
+        addFilters();
     }
 
     function removeState(filter) {
@@ -466,14 +463,33 @@
     }
 
     function addFilters() {
-        placeImage(buffered_image);
         state.map(el => {
             el();
         })
     }
 
+    function save() {
+        let img = new Image();
+
+        img.src = source_image;
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+        addFilters();
+
+        window.open(
+            canvas.toDataURL(),
+            '_blank'
+        );
+
+        placeImage(buffered_image);
+        addFilters();
+    }
+
     const colorize_btn = document.querySelector('.js-colorize');
     const reset_btn = document.querySelector('.js-reset');
+    const grayscale_btn = document.querySelector('.js-grayscale-btn');
+    const save_btn = document.querySelector('.js-save-btn');
     const canvas = document.querySelector('.js-canvas');
     const ctx = canvas.getContext('2d');
     const pick_container = document.querySelector('.js-pick');
@@ -481,24 +497,29 @@
     const contrast_range = document.querySelector('.js-contrast-range');
     const color_input = document.querySelector('.js-color-picker');
 
-    threshold_range.addEventListener('change', thresholdChange);
     document.getElementById('files').addEventListener('change', handleFileSelect, false);
     canvas.addEventListener('mousemove', printPick);
+    save_btn.addEventListener('click', save);
+
+    grayscale_btn.addEventListener('click', () => {
+        setState(makeGrayscale);
+    });
 
     contrast_range.addEventListener('change', () => {
         setState(contrastChange);
-        addFilters();
+    });
+
+    threshold_range.addEventListener('change', () => {
+        setState(BWExceptOne);
     });
 
     canvas.addEventListener('click', e => {
         pickColorFromImage(e);
         setState(BWExceptOne);
-        addFilters();
     });
 
     colorize_btn.addEventListener('click', () => {
         setState(colorize);
-        addFilters();
     });
 
     reset_btn.addEventListener('click', () => {
